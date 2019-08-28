@@ -9,7 +9,9 @@
 % magnification factors.
 % I compile 10 times to have stable results and for 5 images with size
 % 512*512
-
+cd(fileparts(mfilename('fullpath')));
+addpathrec('.')
+deterministic('on');
 
 clear all
 close all
@@ -85,9 +87,9 @@ prior_model{1}.name='gmm';
 figure()
 colormap gray
 subplot(2,3,1)
-imagesc(x, [0 1]);title('Image originale X');
+imagesc(x, [0 1]);title('Original image X');
 subplot(2,3,2)
-imagesc(y, [0 1]);title('Image observée Y (connue)');
+imagesc(y, [0 1]);title(' Observed image Y (known)');
 subplot(2,3,3)
 xb = imresize(y, op.isize, 'bicubic');
 imagesc(xb, [0 1]);title(sprintf('Z: (PSNR %.1f SSIM %.3f)', ...
