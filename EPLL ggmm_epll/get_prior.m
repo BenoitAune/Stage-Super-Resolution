@@ -16,17 +16,17 @@ function prior_model = get_prior(name)
 
 switch name
     case 'gmm2'
-        load('data/gmm2.mat', 'GS');
+        load('EPLL data/gmm2.mat', 'GS');
         for k = 1:GS.nmodels
             GS.nu{k} = 2 * ones(GS.dim, 1);
         end
         GS.nu{k} = double(GS.nu{k});
     case 'lmm'
-        load('data/lmm.mat', 'GS');
+        load('EPLL data/lmm.mat', 'GS');
     case 'hlmm_05'
-        load('data/hlmm_05.mat', 'GS');
+        load('EPLL data/hlmm_05.mat', 'GS');
     case 'ggmm'
-        load('data/ggmm.mat', 'GS');
+        load('EPLL data/ggmm.mat', 'GS');
 end
 prior_model.GS     = GS;
 prior_model.name   = name;
