@@ -17,7 +17,8 @@ sig=40;
 h=37;
 tau = 8;   % tau * tau the size of a patch in Y
 q=1;       % magnification factor
-K=300;       % the number of gaussian in the GMM
+K=10;       % the number of gaussian in the GMM
+gamma = 0.0000001; % regularization parameter to patches recovery
 tau2=floor(tau/2);
 tau2q=floor(tau*q/2);
 epsilon = 0.000001; 
@@ -122,7 +123,7 @@ tstart = tic;
 masky_obs   = getmask(My_obs, Ny_obs, tau,1, false);
 yi_obs = getpatches(y_obs, tau, masky_obs);
 [Myi_obs,Nyi_obs]= size(yi_obs);
-[xi_hat,k_hat] = patches_restoration(yi_obs,K,wVk,muVk,sigmaVk,Mxi); % MMSE
+[xi_hat,k_hat] = restoration_MMSE(yi_obs,wVk,muVk,sigmaVk,Mxi); % MMSE
 
 maskx_orig=zeros(My_obs*q,Ny_obs*q);
 if mod(tau*q,2)==0
@@ -130,7 +131,7 @@ if mod(tau*q,2)==0
 else
     maskx_orig(tau2q+1:q:My_obs*q-tau2q,tau2q+1:q:Ny_obs*q-tau2q)=1;
 end
-X_hat = get_image2D(xi_hat,tau*q,My_obs*q,Ny_obs*q,k_hat,muVk(1:Mvi-Myi_obs,:),sigmaVk(1:Mvi-Myi_obs,1:Mvi-Myi_obs,:),maskx_orig);
+X_hat = get_image2D(xi_hat,tau*q,My_obs*q,Ny_obs*q,k_hat,muVk(1:Mvi-Myi_obs,:),sigmaVk(1:Mvi-Myi_obs,1:Mvi-Myi_obs,:),maskx_orig,gamma);
 % 
 % maskx_orig  = getmask(Mx_orig, Nx_orig, tau*q, q, randommask);
 % [Mxi_orig,Nxi_orig]=size(xi);
@@ -160,7 +161,7 @@ end
 prior_model.GS.nmodels=K;
 prior_model.GS.dim=tau*tau*q*q;
 
-X_hat2 = ggmm_epll(y_obs,maskx_orig,q,k_hat, sig, prior_model); % EPLL & get image
+X_hat2 = ggmm_epll(y_obs,maskx_orig,gamma,q,k_hat, sig, prior_model); % EPLL & get image
 
 tEPLL=tEM + toc(tstart);
 
@@ -184,8 +185,6 @@ colormap gray
 
 figure(2)
 subplot(2,2,1);imagesc(y_obs,[0 1]);title('Image observée Y (connue)');
-subplot(2,2,2);imagesc(xb,[0 1]);
-title(sprintf('Z: PSNR %.1f SSIM %.3f', psnr(xb, x_orig), ssim(xb, x_orig)));
 subplot(2,2,3);imagesc(X_hat,[0 1]);title(sprintf('X_h (MMSE): PSNR %.1f SSIM %.3f',psnr(X_hat, x_orig), ssim(X_hat, x_orig)));
 subplot(2,2,4);imagesc(X_hat2,[0 1]);title(sprintf('X_h (EPLL): PSNR %.1f SSIM %.3f',psnr(X_hat2, x_orig), ssim(X_hat2, x_orig)));
 colormap gray
@@ -200,8 +199,6 @@ figure()
 subplot(2,2,1);imagesc(y,[0 1]);title('Partie de Y (connue)');
 subplot(2,2,3);imagesc(X_hat(randM2:randM2+wM2-1, randN2:wN2+randN2-1),[0 1]);
 title(sprintf('x_h (MMSE): PSNR %.1f SSIM %.3f',psnr(X_hat(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x), ssim(X_hat(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x)));
-subplot(2,2,2);imagesc(xb(randM2:randM2+wM2-1, randN2:wN2+randN2-1),[0 1]);
-title(sprintf('z: PSNR %.1f SSIM %.3f',psnr(xb(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x), ssim(xb(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x)));
 subplot(2,2,4);imagesc(X_hat2(randM2:randM2+wM2-1, randN2:wN2+randN2-1),[0 1]);
 title(sprintf('x_h (EPLL): PSNR %.1f SSIM %.3f',psnr(X_hat2(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x), ssim(X_hat2(randM2:randM2+wM2-1, randN2:wN2+randN2-1), x)));
 colormap gray
@@ -226,8 +223,6 @@ subplot(2,2,1);imagesc(y_obs(posM2:posM2+wM-1, posN2:wN+posN2-1),[0 1]);
 title('Partie de Y (connue)');
 subplot(2,2,3);imagesc(X_hat(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (MMSE): PSNR %.1f SSIM %.3f',psnr(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
-subplot(2,2,2);imagesc(xb(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
-title(sprintf('z: PSNR %.1f SSIM %.3f',psnr(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 subplot(2,2,4);imagesc(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (EPLL): PSNR %.1f SSIM %.3f',psnr(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 colormap gray
@@ -249,8 +244,6 @@ subplot(2,2,1);imagesc(y_obs(posM2:posM2+wM-1, posN2:wN+posN2-1),[0 1]);
 title('Partie de Y (connue)');
 subplot(2,2,3);imagesc(X_hat(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (MMSE): PSNR %.1f SSIM %.3f',psnr(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
-subplot(2,2,2);imagesc(xb(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
-title(sprintf('z: PSNR %.1f SSIM %.3f',psnr(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 subplot(2,2,4);imagesc(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (EPLL): PSNR %.1f SSIM %.3f',psnr(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 colormap gray
@@ -275,8 +268,6 @@ subplot(2,2,1);imagesc(y_obs(posM2:posM2+wM-1, posN2:wN+posN2-1),[0 1]);
 title('Partie de Y (connue)');
 subplot(2,2,3);imagesc(X_hat(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (MMSE): PSNR %.1f SSIM %.3f',psnr(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
-subplot(2,2,2);imagesc(xb(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
-title(sprintf('z: PSNR %.1f SSIM %.3f',psnr(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(xb(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 subplot(2,2,4);imagesc(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1),[0 1]);
 title(sprintf('x_h (EPLL): PSNR %.1f SSIM %.3f',psnr(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1)), ssim(X_hat2(posM:posM+wM2-1, posN:wN2+posN-1), x_orig(posM:posM+wM2-1, posN:wN2+posN-1))));
 colormap gray
